@@ -11,10 +11,8 @@
     <div id="app">
         <header>
             <div class="status-bar">
-                <span id="connection-status">Mic Ready</span>
-                <div class="controls">
-                    <button id="freeze-btn" class="icon-btn"><i data-lucide="pause"></i></button>
-                </div>
+                <span id="connection-status">Ready</span>
+                <button id="freeze-btn" class="icon-btn"><i data-lucide="pause"></i></button>
             </div>
         </header>
 
@@ -30,67 +28,57 @@
 
                 <div class="tuner-container">
                     <div class="tuner-scale">
-                        <div class="marker-flat">-50</div>
-                        <div class="center-line"></div>
-                        <div class="marker-sharp">+50</div>
+                        <span>-50</span>
+                        <span>0</span>
+                        <span>+50</span>
                     </div>
+                    <div class="center-line"></div>
                     <div id="tuner-needle"></div>
                 </div>
-                <p class="label" style="text-align:center; color: #94a3b8; font-size: 0.7rem;">CENTS DEVIATION</p>
+                <p class="label-desc">CENTS</p>
             </section>
 
             <section id="view-analyze" class="view">
                 <div class="card">
-                    <h3>Pitch History</h3>
-                    <canvas id="history-canvas"></canvas>
-                </div>
-                <div class="card">
-                    <h3>Input Waveform</h3>
-                    <canvas id="waveform-canvas"></canvas>
+                    <h3>Pitch Histogram</h3>
+                    <div class="canvas-wrapper">
+                        <canvas id="history-canvas"></canvas>
+                    </div>
+                    <p class="label-desc">Real-time Pitch Tracking</p>
                 </div>
             </section>
 
             <section id="view-practice" class="view">
-                <div class="card metronome-card">
+                <div class="card">
                     <h3>Metronome</h3>
-                    <div class="tempo-display" style="text-align: center; margin: 10px 0;">
-                        <span id="bpm-value" style="font-size: 2rem; color: #38bdf8;">120</span> <small>BPM</small>
+                    <div class="tempo-display">
+                        <span id="bpm-value">120</span> <small>BPM</small>
                     </div>
-                    <input type="range" id="bpm-slider" min="40" max="220" value="120" style="width: 100%; margin-bottom: 15px;">
-                    <button id="metro-toggle" class="btn-primary">Start Metronome</button>
+                    <input type="range" id="bpm-slider" min="40" max="220" value="120">
+                    <button id="metro-toggle" class="btn-primary">Start</button>
                 </div>
                 <div class="card">
-                    <h3>Vocal Range Test</h3>
-                    <div class="range-stats" style="display: flex; justify-content: space-around; margin: 15px 0;">
-                        <div style="text-align: center;">
-                            <p class="label">LOW</p>
-                            <span id="range-low" style="font-size: 1.5rem; font-weight: bold;">--</span>
-                        </div>
-                        <div style="text-align: center;">
-                            <p class="label">HIGH</p>
-                            <span id="range-high" style="font-size: 1.5rem; font-weight: bold;">--</span>
-                        </div>
+                    <h3>Vocal Range</h3>
+                    <div class="range-grid">
+                        <div><p>LOW</p><span id="range-low">--</span></div>
+                        <div><p>HIGH</p><span id="range-high">--</span></div>
                     </div>
-                    <button id="reset-range" class="btn-secondary" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: white;">Reset Range</button>
+                    <button id="reset-range" class="btn-secondary">Reset</button>
                 </div>
             </section>
 
             <section id="view-settings" class="view">
                 <div class="card">
                     <div class="settings-group">
-                        <label>Notation System</label>
+                        <label>Notation</label>
                         <select id="setting-notation">
-                            <option value="english">C D E F G A B</option>
-                            <option value="solfege">Do Re Mi Fa Sol La Si</option>
+                            <option value="english">Standard (A, B, C)</option>
+                            <option value="solfege">Solfege (Do, Re, Mi)</option>
                         </select>
                     </div>
                     <div class="settings-group">
-                        <label>Reference Pitch (A4)</label>
+                        <label>Ref Pitch (A4)</label>
                         <input type="number" id="setting-ref-pitch" value="440">
-                    </div>
-                    <div class="settings-group">
-                        <label>Sensitivity Threshold</label>
-                        <input type="range" id="setting-threshold" min="0.001" max="0.05" step="0.001" value="0.01">
                     </div>
                 </div>
             </section>
@@ -105,10 +93,10 @@
     </div>
 
     <div id="modal-permission" class="modal">
-        <div class="modal-content" style="text-align: center; background: #1e293b; padding: 30px; border-radius: 20px; width: 80%;">
-            <h2>Start PitchPro</h2>
-            <p style="color: #94a3b8; margin-bottom: 20px;">Grant microphone access to begin tuning.</p>
-            <button id="start-app-btn" class="btn-primary">Allow & Start</button>
+        <div class="modal-content">
+            <h2>Microphone Access</h2>
+            <p>We need your mic to analyze pitch.</p>
+            <button id="start-app-btn" class="btn-primary">Enable Microphone</button>
         </div>
     </div>
 
