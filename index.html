@@ -11,7 +11,7 @@
     <div id="app">
         <header>
             <div class="status-bar">
-                <span id="connection-status">Ready</span>
+                <span id="connection-status">Mic Ready</span>
                 <div class="controls">
                     <button id="freeze-btn" class="icon-btn"><i data-lucide="pause"></i></button>
                 </div>
@@ -36,95 +36,79 @@
                     </div>
                     <div id="tuner-needle"></div>
                 </div>
-
-                <div class="confidence-container">
-                    <div id="confidence-bar"></div>
-                </div>
-                <p class="label">PITCH STABILITY</p>
+                <p class="label" style="text-align:center; color: #94a3b8; font-size: 0.7rem;">CENTS DEVIATION</p>
             </section>
 
             <section id="view-analyze" class="view">
-                <canvas id="waveform-canvas"></canvas>
                 <div class="card">
                     <h3>Pitch History</h3>
                     <canvas id="history-canvas"></canvas>
+                </div>
+                <div class="card">
+                    <h3>Input Waveform</h3>
+                    <canvas id="waveform-canvas"></canvas>
                 </div>
             </section>
 
             <section id="view-practice" class="view">
                 <div class="card metronome-card">
                     <h3>Metronome</h3>
-                    <div class="tempo-display">
-                        <span id="bpm-value">120</span> <small>BPM</small>
+                    <div class="tempo-display" style="text-align: center; margin: 10px 0;">
+                        <span id="bpm-value" style="font-size: 2rem; color: #38bdf8;">120</span> <small>BPM</small>
                     </div>
-                    <input type="range" id="bpm-slider" min="40" max="220" value="120">
-                    <button id="metro-toggle" class="btn-primary">Start</button>
+                    <input type="range" id="bpm-slider" min="40" max="220" value="120" style="width: 100%; margin-bottom: 15px;">
+                    <button id="metro-toggle" class="btn-primary">Start Metronome</button>
                 </div>
                 <div class="card">
-                    <h3>Range Test</h3>
-                    <p class="label">Sing your lowest and highest notes</p>
-                    <div class="range-stats">
-                        <div>Low: <span id="range-low">--</span></div>
-                        <div>High: <span id="range-high">--</span></div>
+                    <h3>Vocal Range Test</h3>
+                    <div class="range-stats" style="display: flex; justify-content: space-around; margin: 15px 0;">
+                        <div style="text-align: center;">
+                            <p class="label">LOW</p>
+                            <span id="range-low" style="font-size: 1.5rem; font-weight: bold;">--</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <p class="label">HIGH</p>
+                            <span id="range-high" style="font-size: 1.5rem; font-weight: bold;">--</span>
+                        </div>
                     </div>
-                    <button id="reset-range" class="btn-secondary">Reset</button>
+                    <button id="reset-range" class="btn-secondary" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: transparent; color: white;">Reset Range</button>
                 </div>
             </section>
 
             <section id="view-settings" class="view">
-                <div class="settings-group">
-                    <label>Notation System</label>
-                    <select id="setting-notation">
-                        <option value="english">C D E F G A B</option>
-                        <option value="solfege">Do Re Mi Fa Sol La Si</option>
-                    </select>
-                </div>
-
-                <div class="settings-group">
-                    <label>Reference Pitch (A4)</label>
-                    <div class="input-row">
-                        <input type="number" id="setting-ref-pitch" value="440" step="1">
-                        <span>Hz</span>
+                <div class="card">
+                    <div class="settings-group">
+                        <label>Notation System</label>
+                        <select id="setting-notation">
+                            <option value="english">C D E F G A B</option>
+                            <option value="solfege">Do Re Mi Fa Sol La Si</option>
+                        </select>
                     </div>
-                </div>
-
-                <div class="settings-group">
-                    <label>Microphone Sensitivity</label>
-                    <input type="range" id="setting-threshold" min="0.001" max="0.1" step="0.005" value="0.01">
-                </div>
-
-                <div class="settings-group">
-                    <label>Response Speed</label>
-                    <input type="range" id="setting-buffer" min="5" max="15" step="1" value="10">
+                    <div class="settings-group">
+                        <label>Reference Pitch (A4)</label>
+                        <input type="number" id="setting-ref-pitch" value="440">
+                    </div>
+                    <div class="settings-group">
+                        <label>Sensitivity Threshold</label>
+                        <input type="range" id="setting-threshold" min="0.001" max="0.05" step="0.001" value="0.01">
+                    </div>
                 </div>
             </section>
         </main>
 
         <nav class="bottom-nav">
-            <button class="nav-item active" data-view="tune">
-                <i data-lucide="music"></i>
-                <span>Tune</span>
-            </button>
-            <button class="nav-item" data-view="analyze">
-                <i data-lucide="activity"></i>
-                <span>Analyze</span>
-            </button>
-            <button class="nav-item" data-view="practice">
-                <i data-lucide="mic-2"></i>
-                <span>Practice</span>
-            </button>
-            <button class="nav-item" data-view="settings">
-                <i data-lucide="settings"></i>
-                <span>Settings</span>
-            </button>
+            <button class="nav-item active" data-view="tune"><i data-lucide="music"></i><span>Tune</span></button>
+            <button class="nav-item" data-view="analyze"><i data-lucide="activity"></i><span>Analyze</span></button>
+            <button class="nav-item" data-view="practice"><i data-lucide="mic-2"></i><span>Practice</span></button>
+            <button class="nav-item" data-view="settings"><i data-lucide="settings"></i><span>Settings</span></button>
         </nav>
     </div>
 
     <div id="modal-permission" class="modal">
-        <div class="modal-content">
-            <h2>Enable Microphone</h2>
-            <p>PitchPro requires microphone access to analyze pitch in real-time.</p>
-            <button id="start-app-btn" class="btn-primary">Allow Access</button>
+        <div class="modal-content" style="text-align: center; background: #1e293b; padding: 30px; border-radius: 20px; width: 80%;">
+            <h2>Start PitchPro</h2>
+            <p style="color: #94a3b8; margin-bottom: 20px;">Grant microphone access to begin tuning.</p>
+            <button id="start-app-btn" class="btn-primary">Allow & Start</button>
         </div>
     </div>
 
