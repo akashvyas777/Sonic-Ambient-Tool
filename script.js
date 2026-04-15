@@ -1,15 +1,14 @@
 const App = {
     audioCtx: null, analyser: null,
-    buf: new Float32Array(4096), // High res for bass
+    buf: new Float32Array(4096), // Large buffer for stable bass detection
     isPaused: false,
     
-    // Pitch Logic
     pitchHistory: [], maxHistory: 150,
     smoothingWindow: [], smoothingSize: 10,
     currentCenterMidi: 60,
 
-    // Drone & Metro
-    droneOsc: null, droneGain: null, droneActive: false,
+    // Drone & Metro State
+    droneOscs: [], droneGain: null, droneActive: false,
     selectedDrone: "C", isMetroOn: false, tempo: 120,
 
     refA4: 440, threshold: 0.015, notation: 'english',
@@ -39,11 +38,11 @@ const App = {
         };
         document.getElementById('metro-toggle').onclick = (e) => {
             this.isMetroOn = !this.isMetroOn;
-            e.target.innerText = this.isMetroOn ? 'Stop' : 'Start';
+            e.target.innerText = this.isMetroOn ? 'Stop Metronome' : 'Start Metronome';
             if(this.isMetroOn) this.playTick();
         };
 
-        // Drone Note Selection
+        // Drone
         document.querySelectorAll('.drone-note').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.drone-note').forEach(b => b.classList.remove('selected'));
@@ -53,12 +52,13 @@ const App = {
             };
         });
 
-        // Drone Control
         document.getElementById('drone-toggle').onclick = () => {
             this.droneActive = !this.droneActive;
             document.getElementById('drone-toggle').innerText = this.droneActive ? 'Stop Drone' : 'Play Drone';
             this.droneActive ? this.startDrone() : this.stopDrone();
         };
+
+        document.getElementById('setting-notation').onchange = (e) => this.notation = e.target.value;
     },
 
     async start() {
@@ -72,7 +72,7 @@ const App = {
             document.getElementById('modal-permission').style.display = 'none';
             this.resizeCanvas();
             this.loop();
-        } catch (e) { alert("Mic required."); }
+        } catch (e) { alert("Mic required for analysis."); }
     },
 
     playTick() {
@@ -87,33 +87,50 @@ const App = {
     },
 
     startDrone() {
-        this.droneOsc = this.audioCtx.createOscillator();
+        this.droneOscs = [];
         this.droneGain = this.audioCtx.createGain();
         const filter = this.audioCtx.createBiquadFilter();
         
-        filter.type = "lowpass"; filter.frequency.value = 350;
-        this.droneOsc.type = "sawtooth";
-        this.droneOsc.frequency.value = this.getFreq(this.selectedDrone);
-        
+        filter.type = "lowpass"; filter.frequency.value = 450;
+        const root = this.getFreq(this.selectedDrone);
+        const harmonics = [1, 1.5, 2]; // Root, 5th, Octave
+
+        harmonics.forEach((ratio, i) => {
+            const osc = this.audioCtx.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.value = root * ratio;
+            const oscGain = this.audioCtx.createGain();
+            oscGain.gain.value = (i === 0) ? 0.7 : (i === 1) ? 0.35 : 0.15;
+            osc.connect(oscGain);
+            oscGain.connect(filter);
+            this.droneOscs.push(osc);
+        });
+
         const vol = document.getElementById('drone-volume').value;
         this.droneGain.gain.setValueAtTime(0, this.audioCtx.currentTime);
         this.droneGain.gain.linearRampToValueAtTime(vol, this.audioCtx.currentTime + 1);
 
-        this.droneOsc.connect(filter);
         filter.connect(this.droneGain);
         this.droneGain.connect(this.audioCtx.destination);
-        this.droneOsc.start();
+        this.droneOscs.forEach(o => o.start());
     },
 
     stopDrone() {
         if(this.droneGain) {
-            this.droneGain.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.5);
-            setTimeout(() => { if(this.droneOsc) this.droneOsc.stop(); }, 500);
+            this.droneGain.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.8);
+            setTimeout(() => { 
+                if(this.droneOscs) this.droneOscs.forEach(o => { try{o.stop();}catch(e){} });
+                this.droneOscs = [];
+            }, 800);
         }
     },
 
     updateDrone() {
-        if(this.droneOsc) this.droneOsc.frequency.setTargetAtTime(this.getFreq(this.selectedDrone), this.audioCtx.currentTime, 0.2);
+        if(this.droneOscs.length > 0) {
+            const root = this.getFreq(this.selectedDrone);
+            const ratios = [1, 1.5, 2];
+            this.droneOscs.forEach((o, i) => o.frequency.setTargetAtTime(root * ratios[i], this.audioCtx.currentTime, 0.2));
+        }
     },
 
     getFreq(note) {
@@ -131,7 +148,14 @@ const App = {
         let d=0; while (c[d]>c[d+1]) d++;
         let maxVal = -1, maxPos = -1;
         for (let i=d; i<data.length; i++) { if (c[i]>maxVal) { maxVal=c[i]; maxPos=i; } }
-        return sr/maxPos;
+        
+        // Quadratic Interpolation for high precision
+        let finalPos = maxPos;
+        if (maxPos > 0 && maxPos < data.length - 1) {
+            const a = c[maxPos - 1], b = c[maxPos], e = c[maxPos + 1];
+            finalPos = maxPos + (e - a) / (2 * (2 * b - a - e));
+        }
+        return sr/finalPos;
     },
 
     getMedian(arr) {
@@ -146,24 +170,25 @@ const App = {
         const w = canvas.width, h = canvas.height;
         ctx.clearRect(0,0,w,h);
 
-        const range = 24;
+        const range = 24; // 2 Octave window
         const minY = this.currentCenterMidi - 12, maxY = this.currentCenterMidi + 12;
 
         for (let m = Math.floor(minY); m <= Math.ceil(maxY); m++) {
             const y = h - ((m-minY)/range)*h;
             ctx.strokeStyle = (m%12===0) ? '#334155' : '#1e293b';
+            ctx.lineWidth = (m%12===0) ? 2 : 1;
             ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-            if(m%12===0) { ctx.fillStyle='#94a3b8'; ctx.fillText(this.midiToName(m), 5, y-5); }
+            if(m%12===0) { ctx.fillStyle='#94a3b8'; ctx.font='12px sans-serif'; ctx.fillText(this.midiToName(m), 10, y-5); }
         }
 
         if (this.pitchHistory.length < 2) return;
-        ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = '#0ea5e9';
+        ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.shadowBlur = 12; ctx.shadowColor = '#0ea5e9';
         ctx.beginPath();
         const step = w / this.maxHistory;
         this.pitchHistory.forEach((f, i) => {
             const m = 12 * Math.log2(f/440) + 69;
             const x = i * step, y = h - ((m-minY)/range)*h;
-            ctx.strokeStyle = `hsl(${(m*20)%360}, 70%, 60%)`;
+            ctx.strokeStyle = `hsl(${(m*15)%360}, 80%, 60%)`;
             if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
         });
         ctx.stroke(); ctx.shadowBlur=0;
@@ -178,7 +203,7 @@ const App = {
         if(!this.isPaused) {
             this.analyser.getFloatTimeDomainData(this.buf);
             const raw = this.detectPitch(this.buf, this.audioCtx.sampleRate);
-            if(raw !== -1 && raw < 2000) {
+            if(raw !== -1 && raw < 2500) {
                 this.smoothingWindow.push(raw);
                 if(this.smoothingWindow.length > this.smoothingSize) this.smoothingWindow.shift();
                 const freq = this.getMedian(this.smoothingWindow);
@@ -186,14 +211,17 @@ const App = {
                 const h = Math.round(12 * Math.log2(freq/this.refA4));
                 const cents = Math.floor(1200 * Math.log2(freq/(this.refA4 * Math.pow(2, h/12))));
 
-                document.getElementById('note-name').innerText = this.notes[this.notation][(h+9)%12 < 0 ? (h+9)%12+12 : (h+9)%12];
+                document.getElementById('note-name').innerText = this.notes[this.notation][((h+9)%12 + 12) % 12];
                 document.getElementById('note-octave').innerText = Math.floor((h+9)/12)+4;
                 document.getElementById('frequency').innerText = freq.toFixed(1);
                 
                 const needle = document.getElementById('tuner-needle');
                 needle.style.transform = `translateX(${(cents/50)*45}vw)`;
 
-                this.currentCenterMidi += ( (12*Math.log2(freq/440)+69) - this.currentCenterMidi ) * 0.1;
+                // Auto-center the "camera" on current pitch
+                const targetMidi = 12 * Math.log2(freq/440) + 69;
+                this.currentCenterMidi += (targetMidi - this.currentCenterMidi) * 0.1;
+
                 this.pitchHistory.push(freq);
                 if(this.pitchHistory.length > this.maxHistory) this.pitchHistory.shift();
                 this.drawHistogram();
