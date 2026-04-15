@@ -4,22 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SonicTool</title>
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="dark-mode">
+<body>
     <div id="app">
         <header>
             <div class="status-bar">
                 <span>Engine Active</span>
-                <button id="freeze-btn" class="icon-btn"><i data-lucide="pause"></i></button>
+                <button id="freeze-btn"><i data-lucide="pause"></i></button>
             </div>
         </header>
 
@@ -40,7 +37,7 @@
             </section>
 
             <section id="view-analyze" class="view">
-                <div class="full-spectrogram-card">
+                <div class="full-spectrogram-container">
                     <canvas id="history-canvas"></canvas>
                 </div>
             </section>
@@ -50,7 +47,7 @@
                     <h3>Metronome</h3>
                     <div class="tempo-display"><span id="bpm-value">120</span> <small>BPM</small></div>
                     <input type="range" id="bpm-slider" min="40" max="220" value="120">
-                    <button id="metro-toggle" class="btn-primary" style="margin-top:15px;">Start</button>
+                    <button id="metro-toggle" class="btn-primary">Start</button>
                 </div>
                 <div class="card">
                     <h3>Tanpura Drone</h3>
@@ -69,10 +66,7 @@
                         <button class="drone-note" data-note="B">B</button>
                     </div>
                     <button id="drone-toggle" class="btn-secondary">Play Drone</button>
-                    <div class="volume-row" style="margin-top:15px; display:flex; align-items:center; gap:10px;">
-                        <i data-lucide="volume-2"></i>
-                        <input type="range" id="drone-volume" min="0" max="1" step="0.1" value="0.5">
-                    </div>
+                    <input type="range" id="drone-volume" min="0" max="1" step="0.1" value="0.5" style="margin-top:10px;">
                 </div>
             </section>
 
@@ -95,7 +89,6 @@
     <div id="modal-permission" class="modal">
         <div class="modal-content">
             <h2>Sonic-Ambient-Tool</h2>
-            <p>Initialize engine for professional analysis.</p>
             <button id="start-app-btn" class="btn-primary">Start Engine</button>
         </div>
     </div>
