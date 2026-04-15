@@ -1,6 +1,6 @@
 const App = {
     audioCtx: null, analyser: null,
-    buf: new Float32Array(4096), // Large buffer for stable bass detection
+    buf: new Float32Array(4096), // High-depth for low frequency accuracy
     isPaused: false,
     
     pitchHistory: [], maxHistory: 150,
@@ -11,11 +11,9 @@ const App = {
     droneOscs: [], droneGain: null, droneActive: false,
     selectedDrone: "C", isMetroOn: false, tempo: 120,
 
-    refA4: 440, threshold: 0.015, notation: 'english',
-    notes: {
-        english: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],
-        solfege: ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si']
-    },
+    refA4: 440, threshold: 0.015,
+    // Notes locked to Chromatic Scale only
+    chromatic: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'],
 
     init() {
         this.setupNav();
@@ -38,11 +36,11 @@ const App = {
         };
         document.getElementById('metro-toggle').onclick = (e) => {
             this.isMetroOn = !this.isMetroOn;
-            e.target.innerText = this.isMetroOn ? 'Stop Metronome' : 'Start Metronome';
+            e.target.innerText = this.isMetroOn ? 'Stop' : 'Start';
             if(this.isMetroOn) this.playTick();
         };
 
-        // Drone
+        // Drone Control
         document.querySelectorAll('.drone-note').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.drone-note').forEach(b => b.classList.remove('selected'));
@@ -57,8 +55,6 @@ const App = {
             document.getElementById('drone-toggle').innerText = this.droneActive ? 'Stop Drone' : 'Play Drone';
             this.droneActive ? this.startDrone() : this.stopDrone();
         };
-
-        document.getElementById('setting-notation').onchange = (e) => this.notation = e.target.value;
     },
 
     async start() {
@@ -72,7 +68,7 @@ const App = {
             document.getElementById('modal-permission').style.display = 'none';
             this.resizeCanvas();
             this.loop();
-        } catch (e) { alert("Mic required for analysis."); }
+        } catch (e) { alert("Microphone access is required."); }
     },
 
     playTick() {
@@ -93,14 +89,16 @@ const App = {
         
         filter.type = "lowpass"; filter.frequency.value = 450;
         const root = this.getFreq(this.selectedDrone);
-        const harmonics = [1, 1.5, 2]; // Root, 5th, Octave
+        // Added 0.5 (Sub-Octave) for massive depth
+        const harmonics = [0.5, 1, 1.5, 2]; 
 
         harmonics.forEach((ratio, i) => {
             const osc = this.audioCtx.createOscillator();
             osc.type = "sawtooth";
             osc.frequency.value = root * ratio;
             const oscGain = this.audioCtx.createGain();
-            oscGain.gain.value = (i === 0) ? 0.7 : (i === 1) ? 0.35 : 0.15;
+            // Balanced volumes: Sub and Root are loudest
+            oscGain.gain.value = (i === 1) ? 0.7 : (i === 0) ? 0.6 : (i === 2) ? 0.3 : 0.15;
             osc.connect(oscGain);
             oscGain.connect(filter);
             this.droneOscs.push(osc);
@@ -108,7 +106,7 @@ const App = {
 
         const vol = document.getElementById('drone-volume').value;
         this.droneGain.gain.setValueAtTime(0, this.audioCtx.currentTime);
-        this.droneGain.gain.linearRampToValueAtTime(vol, this.audioCtx.currentTime + 1);
+        this.droneGain.gain.linearRampToValueAtTime(vol, this.audioCtx.currentTime + 1.2);
 
         filter.connect(this.droneGain);
         this.droneGain.connect(this.audioCtx.destination);
@@ -128,13 +126,13 @@ const App = {
     updateDrone() {
         if(this.droneOscs.length > 0) {
             const root = this.getFreq(this.selectedDrone);
-            const ratios = [1, 1.5, 2];
+            const ratios = [0.5, 1, 1.5, 2];
             this.droneOscs.forEach((o, i) => o.frequency.setTargetAtTime(root * ratios[i], this.audioCtx.currentTime, 0.2));
         }
     },
 
     getFreq(note) {
-        const f = {"C":130.8,"C#":138.6,"D":146.8,"D#":155.6,"E":164.8,"F":174.6,"F#":185.0,"G":196.0,"G#":207.7,"A":220.0,"A#":233.1,"B":246.9};
+        const f = {"C":130.81,"C#":138.59,"D":146.83,"D#":155.56,"E":164.81,"F":174.61,"F#":185.00,"G":196.00,"G#":207.65,"A":220.00,"A#":233.08,"B":246.94};
         return f[note];
     },
 
@@ -149,7 +147,6 @@ const App = {
         let maxVal = -1, maxPos = -1;
         for (let i=d; i<data.length; i++) { if (c[i]>maxVal) { maxVal=c[i]; maxPos=i; } }
         
-        // Quadratic Interpolation for high precision
         let finalPos = maxPos;
         if (maxPos > 0 && maxPos < data.length - 1) {
             const a = c[maxPos - 1], b = c[maxPos], e = c[maxPos + 1];
@@ -170,15 +167,24 @@ const App = {
         const w = canvas.width, h = canvas.height;
         ctx.clearRect(0,0,w,h);
 
-        const range = 24; // 2 Octave window
+        const range = 24; 
         const minY = this.currentCenterMidi - 12, maxY = this.currentCenterMidi + 12;
 
+        // FIXED: Rendering ALL semitone labels in the current view
         for (let m = Math.floor(minY); m <= Math.ceil(maxY); m++) {
             const y = h - ((m-minY)/range)*h;
+            
+            // Major lines for C, minor lines for others
             ctx.strokeStyle = (m%12===0) ? '#334155' : '#1e293b';
             ctx.lineWidth = (m%12===0) ? 2 : 1;
             ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-            if(m%12===0) { ctx.fillStyle='#94a3b8'; ctx.font='12px sans-serif'; ctx.fillText(this.midiToName(m), 10, y-5); }
+            
+            // Note Labels for EVERY semitone
+            ctx.fillStyle = (m%12===0) ? '#94a3b8' : '#475569';
+            ctx.font = '11px monospace';
+            const noteName = this.chromatic[((m % 12) + 12) % 12];
+            const octave = Math.floor(m / 12) - 1;
+            ctx.fillText(noteName + octave, 10, y - 5);
         }
 
         if (this.pitchHistory.length < 2) return;
@@ -188,15 +194,10 @@ const App = {
         this.pitchHistory.forEach((f, i) => {
             const m = 12 * Math.log2(f/440) + 69;
             const x = i * step, y = h - ((m-minY)/range)*h;
-            ctx.strokeStyle = `hsl(${(m*15)%360}, 80%, 60%)`;
+            ctx.strokeStyle = `hsl(${(m*20)%360}, 80%, 60%)`;
             if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
         });
         ctx.stroke(); ctx.shadowBlur=0;
-    },
-
-    midiToName(m) {
-        const n = this.notes[this.notation];
-        return n[((m%12)+12)%12] + (Math.floor(m/12)-1);
     },
 
     loop() {
@@ -211,14 +212,15 @@ const App = {
                 const h = Math.round(12 * Math.log2(freq/this.refA4));
                 const cents = Math.floor(1200 * Math.log2(freq/(this.refA4 * Math.pow(2, h/12))));
 
-                document.getElementById('note-name').innerText = this.notes[this.notation][((h+9)%12 + 12) % 12];
+                // Update Main Tuner UI
+                document.getElementById('note-name').innerText = this.chromatic[((h+9)%12 + 12) % 12];
                 document.getElementById('note-octave').innerText = Math.floor((h+9)/12)+4;
                 document.getElementById('frequency').innerText = freq.toFixed(1);
                 
                 const needle = document.getElementById('tuner-needle');
                 needle.style.transform = `translateX(${(cents/50)*45}vw)`;
 
-                // Auto-center the "camera" on current pitch
+                // Smoothly follow pitch in Spectrogram
                 const targetMidi = 12 * Math.log2(freq/440) + 69;
                 this.currentCenterMidi += (targetMidi - this.currentCenterMidi) * 0.1;
 
