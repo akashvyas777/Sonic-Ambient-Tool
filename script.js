@@ -4,11 +4,12 @@ const App = {
     buf: new Float32Array(2048),
     isPaused: false,
     
-    // Smoothing Buffers
+    // Smoothing & Histogram Data
     pitchHistory: [], 
     maxHistory: 150,
     smoothingWindow: [],
-    smoothingSize: 6, // Increase for even more stability
+    smoothingSize: 6,
+    currentCenterMidi: 60, // Default to Middle C
 
     // Range Data
     minFreq: Infinity, maxFreq: -Infinity,
@@ -31,38 +32,27 @@ const App = {
 
     bindEvents() {
         document.getElementById('start-app-btn').onclick = () => this.startEngine();
-        
         document.getElementById('freeze-btn').onclick = () => {
             this.isPaused = !this.isPaused;
             const icon = document.querySelector('#freeze-btn i');
             icon.setAttribute('data-lucide', this.isPaused ? 'play' : 'pause');
             lucide.createIcons();
         };
-
-        // Metronome logic
         document.getElementById('bpm-slider').oninput = (e) => {
             this.tempo = e.target.value;
             document.getElementById('bpm-value').innerText = this.tempo;
         };
-
         document.getElementById('metro-toggle').onclick = (e) => {
             this.isMetroOn = !this.isMetroOn;
-            e.target.innerText = this.isMetroOn ? 'Stop Metronome' : 'Start Metronome';
+            e.target.innerText = this.isMetroOn ? 'Stop' : 'Start';
             if(this.isMetroOn) this.playTick();
         };
-
-        // Reset tracking
         document.getElementById('reset-range').onclick = () => {
             this.minFreq = Infinity; this.maxFreq = -Infinity;
             document.getElementById('range-low').innerText = '--';
             document.getElementById('range-high').innerText = '--';
             this.pitchHistory = [];
         };
-
-        // Settings updates
-        document.getElementById('setting-notation').onchange = (e) => this.notation = e.target.value;
-        document.getElementById('setting-ref-pitch').onchange = (e) => this.refA4 = parseFloat(e.target.value) || 440;
-        document.getElementById('setting-threshold').oninput = (e) => this.threshold = parseFloat(e.target.value);
     },
 
     async startEngine() {
@@ -73,13 +63,10 @@ const App = {
             this.analyser = this.audioCtx.createAnalyser();
             this.analyser.fftSize = 2048;
             source.connect(this.analyser);
-            
             document.getElementById('modal-permission').style.display = 'none';
             this.resizeCanvas();
             this.audioLoop();
-        } catch (err) {
-            alert("Please allow microphone access to use the tuner.");
-        }
+        } catch (err) { alert("Mic access required."); }
     },
 
     playTick() {
@@ -93,12 +80,10 @@ const App = {
         setTimeout(() => this.playTick(), (60 / this.tempo) * 1000);
     },
 
-    // Autocorrelation Pitch Detection
     detectPitch(data, sr) {
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
         if (Math.sqrt(sum / data.length) < this.threshold) return -1;
-
         let c = new Float32Array(data.length).fill(0);
         for (let i = 0; i < data.length; i++) {
             for (let j = 0; j < data.length - i; j++) c[i] += data[j] * data[j + i];
@@ -119,29 +104,35 @@ const App = {
         const h = canvas.height;
         ctx.clearRect(0, 0, w, h);
 
-        // Draw Vertical Note Guides (Piano Roll Style)
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        ctx.font = '10px sans-serif';
-        ctx.fillStyle = '#475569';
-        
-        // Show 3 octaves (C3 to C6)
-        for (let m = 48; m <= 84; m += 1) {
-            const y = h - ((m - 48) / 36) * h;
-            if (m % 12 === 0) { // Highlight C notes
-                ctx.strokeStyle = '#334155';
-                ctx.fillText(this.midiToNoteName(m), 5, y - 5);
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-            }
+        // Define the visible range (2 octaves total)
+        const range = 24; 
+        const minY = this.currentCenterMidi - (range / 2);
+        const maxY = this.currentCenterMidi + (range / 2);
+
+        // Draw Piano Roll horizontal lines for ALL notes in range
+        for (let m = Math.floor(minY); m <= Math.ceil(maxY); m++) {
+            const y = h - ((m - minY) / range) * h;
+            
+            // Draw line
+            ctx.strokeStyle = (m % 12 === 0) ? '#334155' : '#1e293b'; 
+            ctx.lineWidth = (m % 12 === 0) ? 2 : 1;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+
+            // Label notes
+            ctx.fillStyle = (m % 12 === 0) ? '#94a3b8' : '#475569';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(this.midiToNoteName(m), 10, y - 5);
         }
 
         if (this.pitchHistory.length < 2) return;
 
-        // Draw Pitch Path
-        ctx.strokeStyle = '#0ea5e9';
-        ctx.lineWidth = 3;
+        // Draw Pitch Line with Gradient (similar to your image)
+        ctx.lineWidth = 4;
         ctx.lineJoin = 'round';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = '#0ea5e9';
         ctx.beginPath();
 
@@ -149,7 +140,11 @@ const App = {
         this.pitchHistory.forEach((f, i) => {
             const midi = 12 * Math.log2(f / 440) + 69;
             const x = i * step;
-            const y = h - ((midi - 48) / 36) * h;
+            const y = h - ((midi - minY) / range) * h;
+            
+            // Dynamic Color based on pitch
+            ctx.strokeStyle = `hsl(${(midi * 10) % 360}, 80%, 60%)`;
+            
             if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
@@ -158,7 +153,9 @@ const App = {
 
     midiToNoteName(midi) {
         const names = this.notes[this.notation];
-        return names[midi % 12] + (Math.floor(midi / 12) - 1);
+        const noteName = names[((midi % 12) + 12) % 12];
+        const octave = Math.floor(midi / 12) - 1;
+        return noteName + octave;
     },
 
     audioLoop() {
@@ -167,29 +164,30 @@ const App = {
             const raw = this.detectPitch(this.buf, this.audioCtx.sampleRate);
 
             if (raw !== -1 && raw < 2500) {
-                // Apply stability smoothing
                 this.smoothingWindow.push(raw);
                 if (this.smoothingWindow.length > this.smoothingSize) this.smoothingWindow.shift();
                 const freq = this.smoothingWindow.reduce((a, b) => a + b) / this.smoothingWindow.length;
 
-                // Pitch Math
                 const h = Math.round(12 * Math.log2(freq / this.refA4));
                 const noteIdx = (h + 9) % 12;
                 const noteName = this.notes[this.notation][noteIdx < 0 ? noteIdx + 12 : noteIdx];
                 const oct = Math.floor((h + 9) / 12) + 4;
                 const cents = Math.floor(1200 * Math.log2(freq / (this.refA4 * Math.pow(2, h/12))));
 
-                // Main Display Update
+                // Update UI
                 document.getElementById('note-name').innerText = noteName;
                 document.getElementById('note-octave').innerText = oct;
                 document.getElementById('frequency').innerText = freq.toFixed(1);
                 
-                // Needle Physics (Capped at -50/+50)
                 const needle = document.getElementById('tuner-needle');
                 const percent = Math.max(-45, Math.min(45, (cents / 50) * 45)); 
                 needle.style.transform = `translateX(${percent}vw)`;
 
-                // Tracking
+                // Dynamic Histogram Centering
+                const targetMidi = 12 * Math.log2(freq / 440) + 69;
+                // Smoothly follow the pitch (Interpolation)
+                this.currentCenterMidi += (targetMidi - this.currentCenterMidi) * 0.1;
+
                 this.pitchHistory.push(freq);
                 if (this.pitchHistory.length > this.maxHistory) this.pitchHistory.shift();
                 this.drawHistogram();
@@ -221,9 +219,7 @@ const App = {
                 document.querySelectorAll('.nav-item, .view').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
-                if (btn.dataset.view === 'analyze') {
-                    setTimeout(() => this.resizeCanvas(), 50);
-                }
+                if (btn.dataset.view === 'analyze') setTimeout(() => this.resizeCanvas(), 50);
             };
         });
     }
