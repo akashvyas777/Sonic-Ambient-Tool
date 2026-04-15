@@ -8,21 +8,13 @@ const App = {
     init() { this.setupNav(); this.bindEvents(); },
     bindEvents() {
         document.getElementById('start-app-btn').onclick = () => this.start();
-        document.getElementById('freeze-btn').onclick = () => {
-            this.isPaused = !this.isPaused;
-            document.querySelector('#freeze-btn i').setAttribute('data-lucide', this.isPaused ? 'play' : 'pause');
-            lucide.createIcons();
-        };
-        document.getElementById('bpm-slider').oninput = (e) => {
-            this.tempo = e.target.value; document.getElementById('bpm-value').innerText = this.tempo;
-        };
+        document.getElementById('freeze-btn').onclick = () => { this.isPaused = !this.isPaused; };
+        document.getElementById('bpm-slider').oninput = (e) => { this.tempo = e.target.value; document.getElementById('bpm-value').innerText = this.tempo; };
         document.getElementById('metro-toggle').onclick = () => this.toggleMetronome();
-        document.querySelectorAll('.drone-note').forEach(btn => {
-            btn.onclick = () => {
-                document.querySelectorAll('.drone-note').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected'); this.selectedDrone = btn.dataset.note;
-                if(this.droneActive) this.updateDrone();
-            };
+        document.querySelectorAll('.drone-note').forEach(b => b.onclick = () => {
+            document.querySelectorAll('.drone-note').forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected'); this.selectedDrone = b.dataset.note;
+            if(this.droneActive) this.updateDrone();
         });
         document.getElementById('drone-toggle').onclick = () => {
             this.droneActive = !this.droneActive;
@@ -39,7 +31,6 @@ const App = {
         document.getElementById('modal-permission').style.display = 'none';
         this.resizeCanvas(); this.loop();
     },
-    // METRONOME FIX
     toggleMetronome() {
         this.isMetroOn = !this.isMetroOn;
         document.getElementById('metro-toggle').innerText = this.isMetroOn ? 'Stop' : 'Start';
@@ -48,43 +39,31 @@ const App = {
     },
     playTick() {
         if (!this.isMetroOn) return;
-        const osc = this.audioCtx.createOscillator();
-        const gain = this.audioCtx.createGain();
-        osc.frequency.value = 1200;
-        gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
+        const osc = this.audioCtx.createOscillator(); const gain = this.audioCtx.createGain();
+        osc.frequency.value = 1000; gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.05);
         osc.connect(gain); gain.connect(this.audioCtx.destination);
         osc.start(); osc.stop(this.audioCtx.currentTime + 0.05);
         this.metroTimeout = setTimeout(() => this.playTick(), (60 / this.tempo) * 1000);
     },
-    // DRONE FIX (Rich Harmonics)
     startDrone() {
         this.stopDrone();
         this.droneGain = this.audioCtx.createGain();
         const root = this.getFreq(this.selectedDrone);
-        // Sub-bass, Root, and Fifth for a "Pro" ambient feel
-        [0.5, 1, 1.5, 2].forEach((mult, i) => {
-            const osc = this.audioCtx.createOscillator();
-            osc.type = i === 0 ? 'sine' : 'sawtooth'; // Sine for sub-bass
-            osc.frequency.value = root * mult;
-            const g = this.audioCtx.createGain();
+        [0.5, 1, 1.5, 2].forEach((m, i) => {
+            const o = this.audioCtx.createOscillator(); o.type = i === 0 ? 'sine' : 'sawtooth';
+            o.frequency.value = root * m; const g = this.audioCtx.createGain();
             g.gain.value = [0.4, 0.2, 0.1, 0.05][i];
-            osc.connect(g); g.connect(this.droneGain);
-            osc.start(); this.droneOscs.push(osc);
+            o.connect(g); g.connect(this.droneGain); o.start(); this.droneOscs.push(o);
         });
-        const vol = document.getElementById('drone-volume').value;
-        this.droneGain.gain.setValueAtTime(0, this.audioCtx.currentTime);
-        this.droneGain.gain.linearRampToValueAtTime(vol, this.audioCtx.currentTime + 0.5);
+        this.droneGain.gain.value = document.getElementById('drone-volume').value;
         this.droneGain.connect(this.audioCtx.destination);
     },
     stopDrone() {
-        if (this.droneGain) this.droneGain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.1);
-        setTimeout(() => {
-            this.droneOscs.forEach(o => { try { o.stop(); } catch(e) {} });
-            this.droneOscs = [];
-        }, 200);
+        if (this.droneGain) this.droneGain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+        setTimeout(() => { this.droneOscs.forEach(o => { try{o.stop();}catch(e){} }); this.droneOscs = []; }, 100);
     },
-    updateDrone() { if(this.droneActive) this.startDrone(); },
+    updateDrone() { this.startDrone(); },
     getFreq(n) { return {"C":130.8,"C#":138.6,"D":146.8,"D#":155.6,"E":164.8,"F":174.6,"F#":185,"G":196,"G#":207.7,"A":220,"A#":233.1,"B":246.9}[n]; },
     detectPitch(data, sr) {
         let sum = 0; for(let i=0; i<data.length; i++) sum += data[i]*data[i];
@@ -125,17 +104,11 @@ const App = {
             if(f > 0 && f < 2000) {
                 const h = Math.round(12 * Math.log2(f/this.refA4));
                 const cents = Math.floor(1200 * Math.log2(f / (this.refA4 * Math.pow(2, h/12))));
-                
-                // Update UI
                 document.getElementById('note-name').innerText = this.chromatic[((h+9)%12+12)%12];
                 document.getElementById('note-octave').innerText = Math.floor((h+9)/12)+4;
                 document.getElementById('frequency').innerText = f.toFixed(1);
-                
-                // TUNER NEEDLE FIX (Using percentage of the container)
                 const needle = document.getElementById('tuner-needle');
-                const moveX = (cents / 50) * 50; // Map -50/+50 cents to -50%/+50% offset
-                needle.style.transform = `translateX(${moveX}px)`; 
-
+                needle.style.transform = `translateX(${(cents/50)*40}vw)`; 
                 this.currentCenterMidi += ( (12*Math.log2(f/440)+69) - this.currentCenterMidi) * 0.1;
                 this.pitchHistory.push(f);
             } else { this.pitchHistory.push(null); }
@@ -144,16 +117,12 @@ const App = {
         }
         requestAnimationFrame(() => this.loop());
     },
-    resizeCanvas() {
-        const c = document.getElementById('history-canvas');
-        if(c) { c.width = c.clientWidth; c.height = c.clientHeight; }
-    },
+    resizeCanvas() { const c = document.getElementById('history-canvas'); if(c) { c.width = c.clientWidth; c.height = c.clientHeight; } },
     setupNav() {
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.onclick = () => {
                 document.querySelectorAll('.nav-item, .view').forEach(el => el.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
+                btn.classList.add('active'); document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
                 if(btn.dataset.view === 'analyze') setTimeout(() => this.resizeCanvas(), 50);
             };
         });
