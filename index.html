@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PitchPro MVP</title>
+    <title>PitchPro - Professional Tuner & Analyzer</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -11,7 +11,7 @@
     <div id="app">
         <header>
             <div class="status-bar">
-                <span id="connection-status">Ready</span>
+                <span id="connection-status">System Ready</span>
                 <button id="freeze-btn" class="icon-btn"><i data-lucide="pause"></i></button>
             </div>
         </header>
@@ -35,16 +35,16 @@
                     <div class="center-line"></div>
                     <div id="tuner-needle"></div>
                 </div>
-                <p class="label-desc">CENTS</p>
+                <p class="label-desc">CENTS DEVIATION</p>
             </section>
 
             <section id="view-analyze" class="view">
                 <div class="card">
-                    <h3>Pitch Histogram</h3>
+                    <h3>Pitch vs Notation</h3>
                     <div class="canvas-wrapper">
                         <canvas id="history-canvas"></canvas>
                     </div>
-                    <p class="label-desc">Real-time Pitch Tracking</p>
+                    <p class="label-desc">Real-time Vocal Tracking</p>
                 </div>
             </section>
 
@@ -55,30 +55,34 @@
                         <span id="bpm-value">120</span> <small>BPM</small>
                     </div>
                     <input type="range" id="bpm-slider" min="40" max="220" value="120">
-                    <button id="metro-toggle" class="btn-primary">Start</button>
+                    <button id="metro-toggle" class="btn-primary" style="margin-top:15px;">Start Metronome</button>
                 </div>
                 <div class="card">
                     <h3>Vocal Range</h3>
                     <div class="range-grid">
-                        <div><p>LOW</p><span id="range-low">--</span></div>
-                        <div><p>HIGH</p><span id="range-high">--</span></div>
+                        <div><p class="label-desc">LOWEST</p><span id="range-low">--</span></div>
+                        <div><p class="label-desc">HIGHEST</p><span id="range-high">--</span></div>
                     </div>
-                    <button id="reset-range" class="btn-secondary">Reset</button>
+                    <button id="reset-range" class="btn-secondary">Reset Tracking</button>
                 </div>
             </section>
 
             <section id="view-settings" class="view">
                 <div class="card">
                     <div class="settings-group">
-                        <label>Notation</label>
+                        <label>Notation System</label>
                         <select id="setting-notation">
-                            <option value="english">Standard (A, B, C)</option>
-                            <option value="solfege">Solfege (Do, Re, Mi)</option>
+                            <option value="english">C D E F G A B</option>
+                            <option value="solfege">Do Re Mi Fa Sol La Si</option>
                         </select>
                     </div>
                     <div class="settings-group">
-                        <label>Ref Pitch (A4)</label>
-                        <input type="number" id="setting-ref-pitch" value="440">
+                        <label>Reference Pitch (A4)</label>
+                        <input type="number" id="setting-ref-pitch" value="440" step="1">
+                    </div>
+                    <div class="settings-group">
+                        <label>Noise Threshold</label>
+                        <input type="range" id="setting-threshold" min="0.005" max="0.05" step="0.005" value="0.015">
                     </div>
                 </div>
             </section>
@@ -94,9 +98,12 @@
 
     <div id="modal-permission" class="modal">
         <div class="modal-content">
-            <h2>Microphone Access</h2>
-            <p>We need your mic to analyze pitch.</p>
-            <button id="start-app-btn" class="btn-primary">Enable Microphone</button>
+            <div style="background: #0ea5e922; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i data-lucide="mic" style="color: #0ea5e9;"></i>
+            </div>
+            <h2>PitchPro Live</h2>
+            <p>Ready to tune? Grant microphone access to start real-time detection.</p>
+            <button id="start-app-btn" class="btn-primary">Initialize Engine</button>
         </div>
     </div>
 
