@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PitchPro - Tuner & Drone</title>
+    <title>PitchPro - Professional Tuner & Drone</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -40,7 +40,7 @@
                     <div class="canvas-wrapper">
                         <canvas id="history-canvas"></canvas>
                     </div>
-                    <p class="label-desc">Scroll-Lock Pitch Tracking</p>
+                    <p class="label-desc">Dynamic Pitch Tracking</p>
                 </div>
             </section>
 
@@ -55,7 +55,7 @@
                 </div>
 
                 <div class="card">
-                    <h3>Reference Drone</h3>
+                    <h3>Power Drone (Root + 5th + Oct)</h3>
                     <div class="drone-grid">
                         <button class="drone-note" data-note="C">C</button>
                         <button class="drone-note" data-note="C#">C#</button>
@@ -83,15 +83,11 @@
             <section id="view-settings" class="view">
                 <div class="card">
                     <div class="settings-group">
-                        <label>Notation</label>
+                        <label>Notation System</label>
                         <select id="setting-notation">
-                            <option value="english">Standard (A, B, C)</option>
+                            <option value="english">Standard (C, D, E)</option>
                             <option value="solfege">Solfege (Do, Re, Mi)</option>
                         </select>
-                    </div>
-                    <div class="settings-group">
-                        <label>A4 Reference</label>
-                        <input type="number" id="setting-ref-pitch" value="440">
                     </div>
                 </div>
             </section>
@@ -107,9 +103,9 @@
 
     <div id="modal-permission" class="modal">
         <div class="modal-content">
-            <h2>Microphone Required</h2>
-            <p>Grant access to enable the high-stability pitch engine.</p>
-            <button id="start-app-btn" class="btn-primary">Enable Microphone</button>
+            <h2>Pitch Engine</h2>
+            <p>Ready to start? Grant microphone access for real-time analysis.</p>
+            <button id="start-app-btn" class="btn-primary">Initialize Engine</button>
         </div>
     </div>
 
