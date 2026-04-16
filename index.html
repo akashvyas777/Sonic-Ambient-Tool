@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="SonicTool">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0ea5e9">
+    <meta name="theme-color" content="#0b0f1a">
 
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -53,13 +53,22 @@
                     <input type="range" id="bpm-slider" min="40" max="220" value="120">
                     <button id="metro-toggle" class="btn-primary">Start</button>
                 </div>
+                
                 <div class="card">
                     <h3>Tanpura Drone</h3>
                     <div class="drone-grid">
-                        <button class="drone-note" data-note="C">C</button>
+                        <button class="drone-note selected" data-note="C">C</button>
                         <button class="drone-note" data-note="C#">C#</button>
                         <button class="drone-note" data-note="D">D</button>
+                        <button class="drone-note" data-note="D#">D#</button>
+                        <button class="drone-note" data-note="E">E</button>
+                        <button class="drone-note" data-note="F">F</button>
+                        <button class="drone-note" data-note="F#">F#</button>
                         <button class="drone-note" data-note="G">G</button>
+                        <button class="drone-note" data-note="G#">G#</button>
+                        <button class="drone-note" data-note="A">A</button>
+                        <button class="drone-note" data-note="A#">A#</button>
+                        <button class="drone-note" data-note="B">B</button>
                     </div>
                     <button id="drone-toggle" class="btn-secondary">Play Drone</button>
                     <div style="margin-top:20px; display:flex; align-items:center; gap:10px;">
@@ -94,17 +103,11 @@
     </div>
 
     <script src="script.js"></script>
-    
     <script>
-        // Initialize Icons
         lucide.createIcons();
-
-        // Register Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker Registered'))
-                    .catch(err => console.log('Service Worker Failed', err));
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
             });
         }
     </script>
